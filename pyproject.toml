@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "halugate"
+version = "0.1.0"
+description = "A latency-accuracy frontier benchmark for real-time LLM hallucination guardrails"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "Marco Pérez Padilla", email = "marco@example.com"}]
+keywords = [
+    "hallucination-detection",
+    "llm-guardrails",
+    "nli",
+    "latency-benchmark",
+    "machine-learning",
+]
+
+dependencies = [
+    "numpy>=1.24,<2.0",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "pyarrow>=14.0",
+    "scikit-learn>=1.2",
+    "torch>=2.0",
+    "transformers>=4.40",
+    "datasets>=2.19",
+    "evaluate>=0.4",
+    "pyyaml>=6.0",
+    "tqdm>=4.65",
+    "matplotlib>=3.7",
+    "seaborn>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "jupyter>=1.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+onnx = [
+    "onnxruntime>=1.17",
+]
+
+all = [
+    "halugate[dev]",
+    "halugate[onnx]",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v --cov=src --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "*/__init__.py"]
