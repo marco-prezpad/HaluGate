@@ -48,3 +48,10 @@ class DatasetNotFoundError(HaluGateError):
             f"Dataset file not found at '{dataset_path}'. "
             "Run the corresponding download/preprocessing step first."
         )
+
+class EmptyBatchError(HaluGateError):
+    """Raised when a detector receives an empty batch of samples to score."""
+
+    def __init__(self, strategy_name: str) -> None:
+        self.strategy_name = strategy_name
+        super().__init__(f"Strategy '{strategy_name}' received an empty batch to predict on.")

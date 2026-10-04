@@ -15,6 +15,7 @@ from src.errors import (
     DatasetNotFoundError,
     HaluGateError,
     UnknownStrategyError,
+    EmptyBatchError,
 )
 
 
@@ -39,3 +40,8 @@ def test_dataset_not_found_error_includes_path() -> None:
 def test_dataset_errors_inherit_from_halugate_error() -> None:
     assert isinstance(DatasetFormatError("x", "y"), HaluGateError)
     assert isinstance(DatasetNotFoundError("x"), HaluGateError)
+
+
+def test_empty_batch_error_includes_strategy_name() -> None:
+    error = EmptyBatchError("lexical")
+    assert "lexical" in str(error)
