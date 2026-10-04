@@ -1,0 +1,36 @@
+{
+    "name": "HaluGate Dev",
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "context": ".."
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-python.black-formatter",
+                "charliermarsh.ruff",
+                "ms-toolsai.jupyter",
+                "tamasfe.even-better-toml",
+                "eamodio.gitlens"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/bin/python3",
+                "editor.formatOnSave": true,
+                "editor.codeActionsOnSave": {
+                    "source.organizeImports": "explicit"
+                }
+            }
+        }
+    },
+    "postCreateCommand": "pip install -e .[dev]",
+    "mounts": [
+        "source=${localWorkspaceFolder}/data,target=/workspace/data,type=bind",
+        "source=${localWorkspaceFolder}/results,target=/workspace/results,type=bind"
+    ],
+    "runArgs": [
+        "--gpus",
+        "all"
+    ]
+}
