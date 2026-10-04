@@ -16,6 +16,7 @@ from src.errors import (
     HaluGateError,
     UnknownStrategyError,
     EmptyBatchError,
+    CheckpointCorruptedError,
 )
 
 
@@ -45,3 +46,9 @@ def test_dataset_errors_inherit_from_halugate_error() -> None:
 def test_empty_batch_error_includes_strategy_name() -> None:
     error = EmptyBatchError("lexical")
     assert "lexical" in str(error)
+
+
+def test_checkpoint_corrupted_error_includes_path_and_reason() -> None:
+    error = CheckpointCorruptedError("/tmp/checkpoint.json", "invalid JSON")
+    assert "/tmp/checkpoint.json" in str(error)
+    assert "invalid JSON" in str(error)

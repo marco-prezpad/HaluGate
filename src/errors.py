@@ -55,3 +55,15 @@ class EmptyBatchError(HaluGateError):
     def __init__(self, strategy_name: str) -> None:
         self.strategy_name = strategy_name
         super().__init__(f"Strategy '{strategy_name}' received an empty batch to predict on.")
+
+
+class CheckpointCorruptedError(HaluGateError):
+    """Raised when a checkpoint file exists but cannot be safely resumed from."""
+
+    def __init__(self, checkpoint_path: str, reason: str) -> None:
+        self.checkpoint_path = checkpoint_path
+        self.reason = reason
+        super().__init__(
+            f"Checkpoint at '{checkpoint_path}' is corrupted or incompatible: {reason}. "
+            "Delete it manually to restart this strategy from scratch."
+        )
