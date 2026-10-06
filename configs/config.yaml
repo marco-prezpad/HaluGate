@@ -6,7 +6,7 @@
 # run -- no code edits to evaluate.py itself.
 #
 # Author: Marco Pérez Padilla
-# Date:   16-09-2026
+# Date:   05-10-2026
 
 data_root: data
 results_root: results
@@ -22,30 +22,37 @@ checkpoint_every: 50
 # wasteful once the mean/percentiles have converged).
 latency_sample_size: 200
 
+# Grouped by shared context (see src/splitting.py), so a record's grounded
+# and hallucinated answers always land in the same split.
+splits:
+  train: 0.7
+  validation: 0.15
+  test: 0.15
+
 # Primary dataset: HaluEval (synthetic hallucinations).
 # Secondary dataset: a RAGTruth-QA subset (organic hallucinations), used to
 # check whether the latency-accuracy frontier observed on HaluEval holds up
 # on naturally-occurring, harder-to-separate errors.
 datasets:
   - halueval
-  - ragtruth_qa_subset
+# - ragtruth_qa_subset
 
 strategies:
   - lexical
   - distilbert
-  - nli
+# - nli
 
 strategy_params:
   lexical:
-    n_gram_size: 3
+    n_gram_size: 1
     overlap_threshold: 0.15
   distilbert:
     model_path: models/distilbert-halu
     batch_size: 16
     max_sequence_length: 512
-    decision_threshold: 0.5
-  nli:
-    model_name: cross-encoder/nli-deberta-v3-base
-    batch_size: 8
-    max_sequence_length: 512
-    contradiction_threshold: 0.5
+  #   decision_threshold: 0.5
+  # nli:
+  #   model_name: cross-encoder/nli-deberta-v3-base
+  #   batch_size: 8
+  #   max_sequence_length: 512
+  #   contradiction_threshold: 0.5

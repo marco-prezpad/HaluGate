@@ -56,7 +56,6 @@ class EmptyBatchError(HaluGateError):
         self.strategy_name = strategy_name
         super().__init__(f"Strategy '{strategy_name}' received an empty batch to predict on.")
 
-
 class CheckpointCorruptedError(HaluGateError):
     """Raised when a checkpoint file exists but cannot be safely resumed from."""
 
@@ -66,4 +65,32 @@ class CheckpointCorruptedError(HaluGateError):
         super().__init__(
             f"Checkpoint at '{checkpoint_path}' is corrupted or incompatible: {reason}. "
             "Delete it manually to restart this strategy from scratch."
+        )
+
+class ConfigValidationError(HaluGateError):
+    """Raised when config.yaml is missing required fields or has invalid values."""
+
+    def __init__(self, field_name: str, reason: str) -> None:
+        self.field_name = field_name
+        self.reason = reason
+        super().__init__(f"Invalid config field '{field_name}': {reason}")
+
+
+class CalibrationError(HaluGateError):
+    """Raised when a decision threshold cannot be meaningfully calibrated.
+
+    Typically means the validation set contains only one class, so F1 (or
+    any other threshold-dependent metric) is undefined/meaningless to
+    optimize against it.
+    """
+
+
+class ModelLoadError(HaluGateError):
+    """Raised when a detector's underlying model fails to load."""
+
+    def __init__(self, model_identifier: str, cause: Exception) -> None:
+        self.model_identifier = model_identifier
+        self.cause = cause
+        super().__init__(
+            f"Failed to load model '{model_identifier}': {cause!r}"
         )

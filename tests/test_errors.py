@@ -17,6 +17,7 @@ from src.errors import (
     UnknownStrategyError,
     EmptyBatchError,
     CheckpointCorruptedError,
+    ConfigValidationError,
 )
 
 
@@ -52,3 +53,8 @@ def test_checkpoint_corrupted_error_includes_path_and_reason() -> None:
     error = CheckpointCorruptedError("/tmp/checkpoint.json", "invalid JSON")
     assert "/tmp/checkpoint.json" in str(error)
     assert "invalid JSON" in str(error)
+
+
+def test_config_validation_error_includes_field_and_reason() -> None:
+    error = ConfigValidationError("datasets", "must list at least one dataset")
+    assert "datasets" in str(error)

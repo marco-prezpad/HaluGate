@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu128
 
 RUN pip install --no-cache-dir numpy scipy pandas pyarrow scikit-learn \
-    transformers datasets evaluate pyyaml tqdm matplotlib seaborn \
+    transformers "accelerate>=1.1.0" datasets evaluate pyyaml tqdm matplotlib seaborn \
     pytest pytest-cov jupyter black ruff
 
 COPY . .
