@@ -9,7 +9,7 @@ JSON Lines: re-running the pipeline after an interruption reuses the cache
 instead of re-tokenizing and re-cleaning the raw files from scratch.
 
 Author: Marco Pérez Padilla
-Date:   04-10-2026
+Date:   06-10-2026
 """
 
 from __future__ import annotations
@@ -97,7 +97,17 @@ class CachingDatasetLoader(DatasetLoader):
 
 
 class HaluEvalLoader(CachingDatasetLoader):
-    """Loader for the HaluEval QA split (context, right/hallucinated answer pairs)."""
+    """Loader for the HaluEval QA split (context, right/hallucinated answer pairs).
+
+    The stored ``context`` is the ``knowledge`` passage only. The question
+    is validated to be present (schema check) but deliberately NOT folded
+    into the context: prepending it was tried and measured -- it did not
+    rescue the zero-shot NLI detector (AUC stayed ~0.5 with or without it)
+    and it let hallucinated answers that merely rephrase the question
+    look supported. Keeping the context as pure evidence also matches how
+    the RAGTruth loader defines it, so both datasets are scored under
+    the same rule.
+    """
 
     name = "halueval"
 
@@ -110,13 +120,16 @@ class HaluEvalLoader(CachingDatasetLoader):
                     continue
                 try:
                     record = json.loads(line)
-                    context = record["knowledge"]
+                    record["question"]
+                    knowledge = record["knowledge"]
                     right_answer = record["right_answer"]
                     hallucinated_answer = record["hallucinated_answer"]
                 except (json.JSONDecodeError, KeyError) as exc:
                     raise DatasetFormatError(
                         self.name, f"line {line_number} missing expected fields: {exc}"
                     ) from exc
+
+                context = knowledge.strip()
 
                 samples.append(
                     HallucinationSample(context, right_answer, False, self.name)

@@ -16,6 +16,7 @@ from src.errors import UnknownStrategyError
 from src.factory import available_strategies, get_detector
 from src.strategies.distilbert_classifier import DistilBERTDetector
 from src.strategies.lexical_overlap import LexicalOverlapDetector
+from src.strategies.nli_detector import NLIDetector
 
 
 def test_get_detector_returns_lexical_overlap_detector() -> None:
@@ -36,6 +37,12 @@ def test_get_detector_returns_distilbert_detector_with_custom_model_path() -> No
     assert detector.batch_size == 4
 
 
+def test_get_detector_returns_nli_detector() -> None:
+    detector = get_detector("nli", {"batch_size": 4})
+    assert isinstance(detector, NLIDetector)
+    assert detector.batch_size == 4
+
+
 def test_get_detector_with_no_params_uses_defaults() -> None:
     detector = get_detector("lexical")
     assert isinstance(detector, LexicalOverlapDetector)
@@ -46,5 +53,5 @@ def test_get_detector_raises_on_unknown_name() -> None:
         get_detector("made_up_strategy")
 
 
-def test_available_strategies_lists_lexical_and_distilbert() -> None:
-    assert set(available_strategies()) == {"lexical", "distilbert"}
+def test_available_strategies_lists_all_three() -> None:
+    assert set(available_strategies()) == {"lexical", "distilbert", "nli"}

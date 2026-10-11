@@ -40,7 +40,7 @@ datasets:
 strategies:
   - lexical
   - distilbert
-# - nli
+  - nli
 
 strategy_params:
   lexical:
@@ -50,9 +50,7 @@ strategy_params:
     model_path: models/distilbert-halu
     batch_size: 16
     max_sequence_length: 512
-  #   decision_threshold: 0.5
-  # nli:
-  #   model_name: cross-encoder/nli-deberta-v3-base
-  #   batch_size: 8
-  #   max_sequence_length: 512
-  #   contradiction_threshold: 0.5
+  nli:
+      model_name: cross-encoder/nli-deberta-v3-base
+      batch_size: 8
+      max_sequence_length: 512

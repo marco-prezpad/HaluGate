@@ -1,12 +1,13 @@
 """
 test_data_loading.py
 
-Covers HaluEval loader parsing against the real schema, the processed-cache
-layer (cache hit vs. miss), and error handling for missing files and
-malformed records.
+Covers HaluEval loader parsing against the real schema (including that the
+question is folded into the stored context -- see HaluEvalLoader's
+docstring for why), the processed-cache layer, and error handling for
+missing files and malformed records.
 
 Author: Marco Pérez Padilla
-Date:   04-10-2026
+Date:   06-10-2026
 """
 
 from __future__ import annotations
@@ -49,22 +50,26 @@ class TestHaluEvalLoader:
         assert any(s.response == "Paris" and s.is_hallucination is False for s in samples)
         assert any(s.response == "Lyon" and s.is_hallucination is True for s in samples)
 
-    def test_load_ignores_extra_question_field_without_error(self, tmp_path: Path) -> None:
+    def test_context_is_the_knowledge_passage_only(self, tmp_path: Path) -> None:
         raw_path = tmp_path / "raw" / "halueval_qa.jsonl"
         _write_jsonl(
             raw_path,
             [
                 {
-                    "knowledge": "k",
-                    "question": "some question nobody reads yet",
-                    "right_answer": "r",
-                    "hallucinated_answer": "h",
+                    "knowledge": "Delhi is the capital of India.",
+                    "question": "What is the capital of India?",
+                    "right_answer": "Delhi",
+                    "hallucinated_answer": "Mumbai",
                 }
             ],
         )
         loader = HaluEvalLoader(raw_path=raw_path, processed_dir=tmp_path / "processed")
+
         samples = loader.load()
-        assert len(samples) == 2
+
+        for sample in samples:
+            assert sample.context == "Delhi is the capital of India."
+            assert "What is the capital" not in sample.context
 
     def test_load_raises_when_raw_file_missing(self, tmp_path: Path) -> None:
         loader = HaluEvalLoader(
@@ -73,9 +78,20 @@ class TestHaluEvalLoader:
         with pytest.raises(DatasetNotFoundError):
             loader.load()
 
+    def test_load_raises_on_missing_question_field(self, tmp_path: Path) -> None:
+        raw_path = tmp_path / "raw" / "halueval_qa.jsonl"
+        _write_jsonl(
+            raw_path,
+            [{"knowledge": "x", "right_answer": "y", "hallucinated_answer": "z"}],
+        )  # missing "question"
+        loader = HaluEvalLoader(raw_path=raw_path, processed_dir=tmp_path / "processed")
+
+        with pytest.raises(DatasetFormatError):
+            loader.load()
+
     def test_load_raises_on_missing_required_field(self, tmp_path: Path) -> None:
         raw_path = tmp_path / "raw" / "halueval_qa.jsonl"
-        _write_jsonl(raw_path, [{"knowledge": "x", "right_answer": "y"}])
+        _write_jsonl(raw_path, [{"knowledge": "x", "question": "q", "right_answer": "y"}])
         loader = HaluEvalLoader(raw_path=raw_path, processed_dir=tmp_path / "processed")
 
         with pytest.raises(DatasetFormatError):
@@ -93,7 +109,9 @@ class TestHaluEvalLoader:
     def test_load_skips_blank_lines(self, tmp_path: Path) -> None:
         raw_path = tmp_path / "raw" / "halueval_qa.jsonl"
         raw_path.parent.mkdir(parents=True, exist_ok=True)
-        record = json.dumps({"knowledge": "k", "right_answer": "r", "hallucinated_answer": "h"})
+        record = json.dumps(
+            {"knowledge": "k", "question": "q", "right_answer": "r", "hallucinated_answer": "h"}
+        )
         raw_path.write_text(f"{record}\n\n{record}\n", encoding="utf-8")
         loader = HaluEvalLoader(raw_path=raw_path, processed_dir=tmp_path / "processed")
 
@@ -104,7 +122,7 @@ class TestHaluEvalLoader:
         raw_path = tmp_path / "raw" / "halueval_qa.jsonl"
         _write_jsonl(
             raw_path,
-            [{"knowledge": "k", "right_answer": "r", "hallucinated_answer": "h"}],
+            [{"knowledge": "k", "question": "q", "right_answer": "r", "hallucinated_answer": "h"}],
         )
         loader = HaluEvalLoader(raw_path=raw_path, processed_dir=tmp_path / "processed")
         first_load = loader.load()
@@ -118,7 +136,7 @@ class TestHaluEvalLoader:
         raw_path = tmp_path / "raw" / "halueval_qa.jsonl"
         _write_jsonl(
             raw_path,
-            [{"knowledge": "k", "right_answer": "r", "hallucinated_answer": "h"}],
+            [{"knowledge": "k", "question": "q", "right_answer": "r", "hallucinated_answer": "h"}],
         )
         processed_dir = tmp_path / "processed"
         loader = HaluEvalLoader(raw_path=raw_path, processed_dir=processed_dir)

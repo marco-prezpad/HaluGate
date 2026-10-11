@@ -18,6 +18,7 @@ from src.errors import UnknownStrategyError
 from src.strategies.base import HallucinationDetector
 from src.strategies.distilbert_classifier import DistilBERTDetector
 from src.strategies.lexical_overlap import LexicalOverlapDetector
+from src.strategies.nli_detector import NLIDetector
 
 _STRATEGY_REGISTRY: dict[str, Callable[[dict[str, Any]], HallucinationDetector]] = {
     "lexical": lambda params: LexicalOverlapDetector(**params),
@@ -25,6 +26,7 @@ _STRATEGY_REGISTRY: dict[str, Callable[[dict[str, Any]], HallucinationDetector]]
         model_path=params.pop("model_path", "models/distilbert-halu"),
         **params,
     ),
+    "nli": lambda params: NLIDetector(**params),
 }
 
 
