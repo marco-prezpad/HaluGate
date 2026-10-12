@@ -27,7 +27,7 @@ from src.evaluate import (
 from src.latency_bench import LatencyRecord
 from src.strategies.base import HallucinationDetector
 from src.utils import CheckpointManager, CheckpointState, configure_logging
-
+from src.data_loading import HallucinationSample
 
 class _CountingDetector(HallucinationDetector):
     name = "counting"
@@ -127,3 +127,112 @@ class TestWriteLatencyRecords:
         output_path = _write_latency_records(records, "halueval", "lexical", tmp_path)
         frame = pd.read_parquet(output_path)
         assert list(frame.columns) == ["example_index", "latency_ms"]
+
+
+class _SplitStubLoader:
+    """Fake dataset loader for the split/strategy-selection tests."""
+
+    name = "fake"
+
+    def __init__(self, samples: list[HallucinationSample]) -> None:
+        self._samples = samples
+
+    def load(self) -> list[HallucinationSample]:
+        return self._samples
+
+
+class _TaggedDetector(HallucinationDetector):
+    """Scores 1.0 for responses starting with 'HALL', 0.0 otherwise."""
+
+    name = "tagged"
+
+    def predict_batch(self, contexts, responses):
+        scores = [1.0 if response.startswith("HALL") else 0.0 for response in responses]
+        return [score >= 0.5 for score in scores], scores
+
+
+def _official_split_samples(train_sources: int, test_sources: int) -> list[HallucinationSample]:
+    samples = []
+    for source in range(train_sources + test_sources):
+        split = "train" if source < train_sources else "test"
+        for response in range(6):
+            hallucinated = response % 2 == 0
+            samples.append(
+                HallucinationSample(
+                    context=f"passages {source}",
+                    response=f"{'HALL ' if hallucinated else ''}answer {source}-{response}",
+                    is_hallucination=hallucinated,
+                    source_dataset="fake",
+                    group_id=f"s{source}",
+                    official_split=split,
+                )
+            )
+    return samples
+
+
+def _run_with_stub(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    samples: list[HallucinationSample],
+    extra_config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    import src.evaluate as evaluate_module
+
+    monkeypatch.setattr(
+        evaluate_module, "get_dataset_loader", lambda name, root: _SplitStubLoader(samples)
+    )
+    monkeypatch.setattr(evaluate_module, "get_detector", lambda name, params: _TaggedDetector())
+
+    config = {
+        "data_root": "data",
+        "results_root": str(tmp_path / "results"),
+        "random_seed": 0,
+        "checkpoint_every": 10,
+        "latency_sample_size": 5,
+        "splits": {"train": 0.7, "validation": 0.15, "test": 0.15},
+        "datasets": ["fake"],
+        "strategies": ["tagged"],
+        "strategy_params": {},
+        **extra_config,
+    }
+    return evaluate_module.run_evaluation(config, configure_logging())
+
+
+class TestRunEvaluationSplitsAndStrategies:
+    def test_official_test_partition_is_what_gets_scored(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _official_split_samples(train_sources=30, test_sources=10)
+
+        rows = _run_with_stub(monkeypatch, tmp_path, samples, {})
+
+        assert rows[0]["sample_count"] == 10 * 6
+        assert rows[0]["auc_roc"] == pytest.approx(1.0)
+
+    def test_strategies_by_dataset_overrides_the_global_list(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _official_split_samples(train_sources=30, test_sources=10)
+
+        rows = _run_with_stub(
+            monkeypatch,
+            tmp_path,
+            samples,
+            {"strategies": ["tagged", "other"], "strategies_by_dataset": {"fake": ["tagged"]}},
+        )
+
+        assert [row["strategy"] for row in rows] == ["tagged"]
+
+    def test_global_strategies_are_used_when_the_dataset_has_no_override(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _official_split_samples(train_sources=30, test_sources=10)
+
+        rows = _run_with_stub(
+            monkeypatch,
+            tmp_path,
+            samples,
+            {"strategies": ["tagged", "other"], "strategies_by_dataset": {"another_dataset": ["x"]}},
+        )
+
+        assert [row["strategy"] for row in rows] == ["tagged", "other"]

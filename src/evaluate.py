@@ -37,7 +37,7 @@ from src.data_loading import get_dataset_loader
 from src.errors import ConfigValidationError
 from src.factory import get_detector
 from src.latency_bench import LatencyRecord, measure_latency
-from src.splitting import split_samples
+from src.splitting import split_dataset
 from src.utils import (
     CheckpointManager,
     CheckpointState,
@@ -194,13 +194,7 @@ def run_evaluation(config: dict[str, Any], logger: Any) -> list[dict[str, Any]]:
         samples = loader.load()
         logger.info("Loaded %d samples from '%s'", len(samples), dataset_name)
 
-        splits = split_samples(
-            samples,
-            train_ratio=split_ratios["train"],
-            validation_ratio=split_ratios["validation"],
-            test_ratio=split_ratios["test"],
-            random_seed=random_seed,
-        )
+        splits = split_dataset(samples, split_ratios, random_seed)
         logger.info(
             "Split '%s' into train=%d validation=%d test=%d",
             dataset_name, len(splits.train), len(splits.validation), len(splits.test),
@@ -214,7 +208,10 @@ def run_evaluation(config: dict[str, Any], logger: Any) -> list[dict[str, Any]]:
         test_responses = [s.response for s in splits.test]
         test_ground_truth = [int(s.is_hallucination) for s in splits.test]
 
-        for strategy_name in config["strategies"]:
+        strategies_for_dataset = config.get("strategies_by_dataset", {}).get(
+            dataset_name, config["strategies"]
+        )
+        for strategy_name in strategies_for_dataset:
             strategy_params = dict(strategy_params_by_name.get(strategy_name, {}))
 
             logger.info("Calibrating '%s' on '%s' validation split", strategy_name, dataset_name)

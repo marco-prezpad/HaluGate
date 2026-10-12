@@ -15,7 +15,7 @@ random_seed: 42
 # How many samples to process per detector before writing a checkpoint.
 # Lower values cost a little I/O overhead but bound how much work is lost
 # if a run is interrupted mid-dataset.
-checkpoint_every: 50
+checkpoint_every: 500
 
 # Number of samples used to estimate per-sample latency (kept separate from
 # the full accuracy run, since timing all samples individually would be
@@ -35,12 +35,16 @@ splits:
 # on naturally-occurring, harder-to-separate errors.
 datasets:
   - halueval
-# - ragtruth_qa_subset
+  - ragtruth_qa
 
 strategies:
   - lexical
   - distilbert
   - nli
+
+strategies_by_dataset:
+  ragtruth_qa:
+    - lexical
 
 strategy_params:
   lexical:
