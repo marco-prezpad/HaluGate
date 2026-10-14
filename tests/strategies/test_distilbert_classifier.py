@@ -159,3 +159,23 @@ def test_score_lies_within_unit_interval(
 ) -> None:
     score_value = detector_with_fake_model.score("ctx", "resp")
     assert 0.0 <= score_value <= 1.0
+
+
+def test_only_the_context_is_truncated() -> None:
+    seen: dict[str, Any] = {}
+
+    class _KwargTokenizer(_FakeTokenizer):
+        def __call__(self, contexts: list[str], responses: list[str], **kwargs: Any):
+            seen.update(kwargs)
+            return super().__call__(contexts, responses, **kwargs)
+
+    detector = DistilBERTDetector(
+        model_path="fake/path", batch_size=10, device="cpu", max_sequence_length=128
+    )
+    detector._model = _FakeModel()
+    detector._tokenizer = _KwargTokenizer()
+
+    detector.predict_batch(["context"], ["response"])
+
+    assert seen["truncation"] == "only_first"
+    assert seen["max_length"] == 128

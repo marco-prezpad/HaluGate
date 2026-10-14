@@ -5,7 +5,7 @@ Verifies the factory instantiates the correct concrete class per name,
 forwards constructor parameters correctly, and raises on unknown names.
 
 Author: Marco Pérez Padilla
-Date:   06-10-2026
+Date:   12-10-2026
 """
 
 from __future__ import annotations
@@ -37,6 +37,17 @@ def test_get_detector_returns_distilbert_detector_with_custom_model_path() -> No
     assert detector.batch_size == 4
 
 
+def test_distilbert_arms_default_to_their_own_checkpoints() -> None:
+    assert get_detector("distilbert_transfer").model_path == "models/distilbert-halu"
+    assert get_detector("distilbert_indomain").model_path == "models/distilbert-ragtruth"
+
+
+def test_distilbert_arms_accept_a_custom_checkpoint_and_parameters() -> None:
+    detector = get_detector("distilbert_indomain", {"model_path": "elsewhere", "batch_size": 2})
+    assert detector.model_path == "elsewhere"
+    assert detector.batch_size == 2
+
+
 def test_get_detector_returns_nli_detector() -> None:
     detector = get_detector("nli", {"batch_size": 4})
     assert isinstance(detector, NLIDetector)
@@ -53,5 +64,11 @@ def test_get_detector_raises_on_unknown_name() -> None:
         get_detector("made_up_strategy")
 
 
-def test_available_strategies_lists_all_three() -> None:
-    assert set(available_strategies()) == {"lexical", "distilbert", "nli"}
+def test_available_strategies_lists_all_registered() -> None:
+    assert set(available_strategies()) == {
+        "lexical",
+        "distilbert",
+        "distilbert_transfer",
+        "distilbert_indomain",
+        "nli",
+    }

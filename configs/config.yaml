@@ -45,6 +45,8 @@ strategies:
 strategies_by_dataset:
   ragtruth_qa:
     - lexical
+    - distilbert_transfer
+    - distilbert_indomain
 
 strategy_params:
   lexical:
@@ -53,6 +55,14 @@ strategy_params:
   distilbert:
     model_path: models/distilbert-halu
     batch_size: 16
+    max_sequence_length: 512
+  distilbert_transfer:
+    model_path: models/distilbert-halu
+    batch_size: 32
+    max_sequence_length: 512
+  distilbert_indomain:
+    model_path: models/distilbert-ragtruth
+    batch_size: 32
     max_sequence_length: 512
   nli:
       model_name: cross-encoder/nli-deberta-v3-base

@@ -24,6 +24,7 @@ from pathlib import Path
 
 from src.errors import ModelLoadError
 from src.strategies.base import HallucinationDetector
+from src.tokenization import encode_pairs
 from src.utils import sort_indices_by_text_length
 
 DEFAULT_MAX_SEQUENCE_LENGTH = 512
@@ -111,9 +112,9 @@ class DistilBERTDetector(HallucinationDetector):
                 encoded = self._tokenizer(
                     batch_contexts,
                     batch_responses,
-                    padding=True,
-                    truncation=True,
                     max_length=self.max_sequence_length,
+                    truncation="only_first",   # see note below
+                    padding=True,
                     return_tensors="pt",
                 ).to(self._device_name)
 

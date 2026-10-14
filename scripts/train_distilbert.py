@@ -31,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.data_loading import get_dataset_loader  # noqa: E402
 from src.evaluate import load_config  # noqa: E402
-from src.splitting import split_samples  # noqa: E402
+from src.splitting import split_dataset  # noqa: E402
+from src.tokenization import encode_pairs  # noqa: E402
 from src.training_data import samples_to_training_arrays  # noqa: E402
 from src.utils import configure_logging, set_global_seed  # noqa: E402
 
@@ -91,13 +92,7 @@ def main() -> None:
     loader = get_dataset_loader(args.dataset, data_root)
     samples = loader.load()
 
-    splits = split_samples(
-        samples,
-        train_ratio=split_ratios["train"],
-        validation_ratio=split_ratios["validation"],
-        test_ratio=split_ratios["test"],
-        random_seed=random_seed,
-    )
+    splits = split_dataset(samples, split_ratios, random_seed)
     logger.info(
         "Split sizes -- train=%d validation=%d (test=%d, unused here)",
         len(splits.train), len(splits.validation), len(splits.test),
@@ -110,12 +105,9 @@ def main() -> None:
     tokenizer = AutoTokenizer.from_pretrained(args.base_model)
     model = AutoModelForSequenceClassification.from_pretrained(args.base_model, num_labels=2)
 
-    def _tokenize(batch: dict[str, list[str]]) -> dict[str, list[int]]:
-        return tokenizer(
-            batch["context"],
-            batch["response"],
-            truncation=True,
-            max_length=args.max_sequence_length,
+    def _tokenize(batch: dict[str, list[str]]) -> dict[str, list[list[int]]]:
+        return encode_pairs(
+            tokenizer, batch["context"], batch["response"], args.max_sequence_length
         )
 
     train_dataset = Dataset.from_dict(
