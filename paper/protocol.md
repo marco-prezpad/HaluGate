@@ -113,3 +113,29 @@ frontier.
 
 Any change made after the first detector has been run on RAGTruth is
 appended below as a dated amendment. The text above is not edited.
+
+## Amendments
+
+### 14-10-2026
+
+Seen before this amendment: the test results of lexical, distilbert_transfer
+and distilbert_indomain on RAGTruth, and train-only diagnostics
+(response length and per-model lexical breakdown). Not seen yet: any
+nli_chunked result.
+
+Findings that motivate it (train only): response length alone separates the
+classes (AUC 0.972 on HaluEval, 0.707 on RAGTruth QA train), and the pooled
+lexical AUC on RAGTruth train (0.728) is higher than the AUC inside every
+single generating model (0.605 to 0.699).
+
+Additions. They do not change any arm, threshold, primary metric or the
+frontier rule above:
+
+- A reference baseline `length`: the word count of the response used as the
+  score, with no parameters. It is reported on every dataset and excluded
+  from the frontier rule. The AUC difference between each detector and this
+  baseline is reported with its bootstrap interval.
+- A secondary metric: AUC within each generating model (RAGTruth only, on
+  the official test), with the pooled AUC remaining the primary metric. A
+  deployed guardrail protects one model, so the within-model AUC is the
+  deployment-relevant number.
