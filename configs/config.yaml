@@ -22,6 +22,10 @@ checkpoint_every: 500
 # wasteful once the mean/percentiles have converged).
 latency_sample_size: 200
 
+bootstrap_resamples: 1000
+reference_strategies:
+  - length
+
 # Grouped by shared context (see src/splitting.py), so a record's grounded
 # and hallucinated answers always land in the same split.
 splits:
@@ -41,14 +45,16 @@ strategies:
   - lexical
   - distilbert
   - nli
+  - length
 
 strategies_by_dataset:
   ragtruth_qa:
     - lexical
     - distilbert_transfer
     - distilbert_indomain
+    - length
 
-strategy_params:
+strategy_params: 
   lexical:
     n_gram_size: 1
     overlap_threshold: 0.15

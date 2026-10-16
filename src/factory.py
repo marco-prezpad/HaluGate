@@ -24,6 +24,7 @@ from src.strategies.base import HallucinationDetector
 from src.strategies.distilbert_classifier import DistilBERTDetector
 from src.strategies.lexical_overlap import LexicalOverlapDetector
 from src.strategies.nli_detector import NLIDetector
+from src.strategies.response_length import ResponseLengthDetector
 
 HALUEVAL_DISTILBERT_PATH = "models/distilbert-halu"
 RAGTRUTH_DISTILBERT_PATH = "models/distilbert-ragtruth"
@@ -44,6 +45,7 @@ _STRATEGY_REGISTRY: dict[str, Callable[[dict[str, Any]], HallucinationDetector]]
     "distilbert_transfer": _distilbert_builder(HALUEVAL_DISTILBERT_PATH),
     "distilbert_indomain": _distilbert_builder(RAGTRUTH_DISTILBERT_PATH),
     "nli": lambda params: NLIDetector(**params),
+    "length": lambda params: ResponseLengthDetector(**params),
 }
 
 

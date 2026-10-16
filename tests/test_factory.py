@@ -71,4 +71,11 @@ def test_available_strategies_lists_all_registered() -> None:
         "distilbert_transfer",
         "distilbert_indomain",
         "nli",
+        "length",
     }
+
+
+def test_get_detector_returns_the_response_length_baseline() -> None:
+    from src.strategies.response_length import ResponseLengthDetector
+
+    assert isinstance(get_detector("length"), ResponseLengthDetector)

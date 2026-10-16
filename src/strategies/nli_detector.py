@@ -107,7 +107,7 @@ class NLIDetector(HallucinationDetector):
                     premises,
                     hypotheses,
                     padding=True,
-                    truncation=True,
+                    truncation="only_first",
                     max_length=self.max_sequence_length,
                     return_tensors="pt",
                 ).to(self._device_name)

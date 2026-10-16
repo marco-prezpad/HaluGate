@@ -139,3 +139,33 @@ frontier rule above:
   the official test), with the pooled AUC remaining the primary metric. A
   deployed guardrail protects one model, so the within-model AUC is the
   deployment-relevant number.
+
+
+### 17-10-2026 
+
+Seen before this amendment: the per-model AUC table for lexical,
+distilbert_transfer, distilbert_indomain and length on the RAGTruth test,
+and the pooled results listed above. Not seen yet: any nli_chunked result.
+
+Why: the per-model AUCs are too noisy to read one by one (a model with a
+single positive response in test has an AUC decided by one comparison).
+
+Additions. They do not change any arm, threshold, primary metric or the
+frontier rule:
+
+- Within-model AUC, summarised in one number: the probability that a
+  hallucinated response outscores a correct response written by the same
+  model (pairs from different models are not compared), with each model
+  weighted by its number of (hallucinated, correct) pairs. It gets a 95%
+  bootstrap interval resampling sources (1000 resamples, seed 42). This is
+  the definition of the secondary metric of the previous amendment; no
+  alternative was tried.
+- Per-model rows are listed with their own bootstrap interval. A model with
+  fewer than 20 positive responses in test is flagged as not interpretable
+  and is never used in a conclusion.
+- Pooled AUC: 95% bootstrap interval, resampling sources.
+- For every detector, the AUC difference with the `length` baseline, with a
+  paired 95% bootstrap interval (same resamples for both).
+- The frontier table, computed with the rule above on the pooled AUC and
+  p50 latency. `length` is listed as "reference" and takes no part in the
+  rule.

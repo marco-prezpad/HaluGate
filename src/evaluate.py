@@ -37,7 +37,9 @@ from src.data_loading import get_dataset_loader
 from src.errors import ConfigValidationError
 from src.factory import get_detector
 from src.latency_bench import LatencyRecord, measure_latency
+from src.reporting import frontier_table, per_group_rows, uncertainty_columns
 from src.splitting import split_dataset
+from src.strategies.response_length import ResponseLengthDetector
 from src.utils import (
     CheckpointManager,
     CheckpointState,
@@ -48,6 +50,8 @@ from src.utils import (
 )
 
 DEFAULT_CHECKPOINT_EVERY = 50
+DEFAULT_BOOTSTRAP_RESAMPLES = 1000
+DEFAULT_REFERENCE_STRATEGIES = ["length"]
 DEFAULT_SPLITS = {"train": 0.7, "validation": 0.15, "test": 0.15}
 
 
@@ -185,8 +189,11 @@ def run_evaluation(config: dict[str, Any], logger: Any) -> list[dict[str, Any]]:
     strategy_params_by_name = config.get("strategy_params", {})
     split_ratios = config.get("splits", DEFAULT_SPLITS)
     random_seed = config.get("random_seed", 42)
+    bootstrap_resamples = config.get("bootstrap_resamples", DEFAULT_BOOTSTRAP_RESAMPLES)
+    reference_strategies = config.get("reference_strategies", DEFAULT_REFERENCE_STRATEGIES)
 
     summary_rows: list[dict[str, Any]] = []
+    per_model_rows: list[dict[str, Any]] = []
 
     for dataset_name in config["datasets"]:
         logger.info("Loading dataset '%s'", dataset_name)
@@ -207,6 +214,9 @@ def run_evaluation(config: dict[str, Any], logger: Any) -> list[dict[str, Any]]:
         test_contexts = [s.context for s in splits.test]
         test_responses = [s.response for s in splits.test]
         test_ground_truth = [int(s.is_hallucination) for s in splits.test]
+        test_models = [s.model for s in splits.test]
+        test_groups = [s.group_id or s.context for s in splits.test]
+        length_scores = ResponseLengthDetector().predict_batch(test_contexts, test_responses)[1]
 
         strategies_for_dataset = config.get("strategies_by_dataset", {}).get(
             dataset_name, config["strategies"]
@@ -242,6 +252,19 @@ def run_evaluation(config: dict[str, Any], logger: Any) -> list[dict[str, Any]]:
                 test_ground_truth, test_predicted_labels, test_scores
             )
 
+            if any(test_models):
+                per_model_rows.extend(
+                    per_group_rows(
+                        dataset_name, strategy_name, test_ground_truth, test_scores,
+                        test_models, bootstrap_resamples, random_seed,
+                    )
+                )
+
+            uncertainty = uncertainty_columns(
+                test_ground_truth, test_scores, test_groups, test_models,
+                length_scores, bootstrap_resamples, random_seed,
+            )
+
             latency_sample_size = min(len(test_contexts), config.get("latency_sample_size", 200))
             detector_for_latency = get_detector(strategy_name, strategy_params)
             latency_records, latency_stats = measure_latency(
@@ -259,6 +282,7 @@ def run_evaluation(config: dict[str, Any], logger: Any) -> list[dict[str, Any]]:
                 "calibrated_threshold": calibration_result.threshold,
                 "calibration_f1": calibration_result.f1_score,
                 **metrics.to_dict(),
+                **uncertainty,
                 "mean_latency_ms": latency_stats.mean_ms,
                 "std_latency_ms": latency_stats.std_ms,
                 "p50_latency_ms": latency_stats.p50_ms,
@@ -271,6 +295,13 @@ def run_evaluation(config: dict[str, Any], logger: Any) -> list[dict[str, Any]]:
                 f"{metrics.auc_roc:.3f}" if metrics.auc_roc is not None else "n/a",
                 latency_stats.mean_ms,
             )
+
+    if per_model_rows:
+        _write_metrics_table(per_model_rows, results_root / "tables" / "auc_by_model.csv")
+
+    frontier_table_rows = frontier_table(summary_rows, reference_strategies)
+    if frontier_table_rows:
+        _write_metrics_table(frontier_table_rows, results_root / "tables" / "frontier.csv")
 
     return summary_rows
 

@@ -38,7 +38,9 @@ class HallucinationSample:
     ``group_id`` ties together samples that must never be split apart (for
     RAGTruth, the source document); empty means "group by context text".
     ``official_split`` carries a dataset's own train/test partition when it
-    has one; empty means the dataset defines none.
+    has one; empty means the dataset defines none. ``model`` names the system
+    that wrote the response when the dataset records it (RAGTruth); empty
+    otherwise.
     """
 
     context: str
@@ -47,6 +49,7 @@ class HallucinationSample:
     source_dataset: str
     group_id: str = ""
     official_split: str = ""
+    model: str = ""
 
 
 class DatasetLoader(ABC):
@@ -235,6 +238,7 @@ class RagTruthLoader(CachingDatasetLoader):
                 response = record["response"]
                 labels = record["labels"]
                 split = record["split"]
+                model = record["model"]
             except KeyError as exc:
                 raise DatasetFormatError(
                     self.name, f"response line {line_number} missing field: {exc}"
@@ -264,6 +268,7 @@ class RagTruthLoader(CachingDatasetLoader):
                     source_dataset=self.name,
                     group_id=source_id,
                     official_split=split,
+                    model=str(model),
                 )
             )
 

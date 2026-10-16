@@ -236,3 +236,89 @@ class TestRunEvaluationSplitsAndStrategies:
         )
 
         assert [row["strategy"] for row in rows] == ["tagged", "other"]
+
+
+
+def _with_models(samples: list[HallucinationSample]) -> list[HallucinationSample]:
+    """Give the samples of each source two generating models (3 responses each)."""
+    from dataclasses import replace
+
+    return [replace(sample, model=f"m{(index % 6) // 3}") for index, sample in enumerate(samples)]
+
+
+class TestPerModelAuc:
+    def test_writes_one_auc_row_per_model(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _with_models(_official_split_samples(train_sources=30, test_sources=10))
+
+        _run_with_stub(monkeypatch, tmp_path, samples, {})
+
+        frame = pd.read_csv(tmp_path / "results" / "tables" / "auc_by_model.csv")
+        assert frame["model"].tolist() == ["m0", "m1"]
+        assert frame["n"].tolist() == [30, 30]
+        assert frame["auc"].tolist() == [1.0, 1.0]
+
+    def test_no_table_when_the_dataset_records_no_models(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _official_split_samples(train_sources=30, test_sources=10)
+
+        _run_with_stub(monkeypatch, tmp_path, samples, {})
+
+        assert not (tmp_path / "results" / "tables" / "auc_by_model.csv").exists()
+
+
+
+class TestUncertaintyAndFrontierOutputs:
+    def test_summary_rows_carry_the_confidence_columns(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _with_models(_official_split_samples(train_sources=30, test_sources=10))
+
+        rows = _run_with_stub(monkeypatch, tmp_path, samples, {"bootstrap_resamples": 40})
+
+        row = rows[0]
+        assert row["auc_lower"] <= row["auc_roc"] <= row["auc_upper"]
+        assert row["auc_minus_length"] is not None
+        assert row["within_model_auc"] is not None
+
+    def test_within_model_columns_are_empty_when_no_models_are_recorded(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _official_split_samples(train_sources=30, test_sources=10)
+
+        rows = _run_with_stub(monkeypatch, tmp_path, samples, {"bootstrap_resamples": 40})
+
+        assert rows[0]["auc_lower"] is not None
+        assert rows[0]["within_model_auc"] is None
+
+    def test_frontier_table_marks_the_length_baseline_as_reference(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _official_split_samples(train_sources=30, test_sources=10)
+
+        _run_with_stub(
+            monkeypatch,
+            tmp_path,
+            samples,
+            {"strategies": ["tagged", "length"], "bootstrap_resamples": 40},
+        )
+
+        frontier = pd.read_csv(tmp_path / "results" / "tables" / "frontier.csv")
+        assert dict(zip(frontier["strategy"], frontier["status"])) == {
+            "tagged": "frontier",
+            "length": "reference",
+        }
+
+    def test_per_model_table_has_intervals_and_the_interpretability_flag(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        samples = _with_models(_official_split_samples(train_sources=30, test_sources=10))
+
+        _run_with_stub(monkeypatch, tmp_path, samples, {"bootstrap_resamples": 40})
+
+        table = pd.read_csv(tmp_path / "results" / "tables" / "auc_by_model.csv")
+        assert {"auc_lower", "auc_upper", "interpretable"} <= set(table.columns)
+        # m0 has 20 positives in the test (enough), m1 only 10 (flagged)
+        assert table["interpretable"].tolist() == [True, False]

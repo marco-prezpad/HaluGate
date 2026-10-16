@@ -219,8 +219,8 @@ class TestRagTruthLoader:
         samples = loader.load()
 
         assert samples == [
-            HallucinationSample("passage 1:x is y.", "answer for 1", False, "ragtruth_qa", "1", "train"),
-            HallucinationSample("passage 1:x is y.", "answer for 1", True, "ragtruth_qa", "1", "test"),
+            HallucinationSample("passage 1:x is y.", "answer for 1", False, "ragtruth_qa", "1", "train", "gpt-4-0613"),
+            HallucinationSample("passage 1:x is y.", "answer for 1", True, "ragtruth_qa", "1", "test", "gpt-4-0613"),
         ]
 
     def test_context_is_the_passages_without_the_question(self, tmp_path: Path) -> None:
@@ -334,7 +334,7 @@ class TestRagTruthLoader:
         with pytest.raises(DatasetFormatError, match="labels"):
             loader.load()
 
-    @pytest.mark.parametrize("missing", ["response", "labels", "split", "source_id"])
+    @pytest.mark.parametrize("missing", ["response", "labels", "split", "source_id", "model"])
     def test_response_missing_a_field_raises_format_error(
         self, tmp_path: Path, missing: str
     ) -> None:
@@ -372,6 +372,42 @@ class TestRagTruthLoader:
         assert loader.load() == first_load
         assert first_load[0].group_id == "1" and first_load[0].official_split == "test"
 
+        
+class TestRagTruthModelField:
+    def test_the_generating_model_is_stored_per_sample(self, tmp_path: Path) -> None:
+        responses = [
+            {**_response("1"), "model": "llama-2-7b-chat"},
+            {**_response("1"), "model": "gpt-4-0613"},
+        ]
+        loader = _write_ragtruth(tmp_path / "ragtruth", [QA_SOURCE], responses)
+
+        assert [s.model for s in loader.load()] == ["llama-2-7b-chat", "gpt-4-0613"]
+
+    def test_cache_round_trip_keeps_the_model(self, tmp_path: Path) -> None:
+        loader = _write_ragtruth(tmp_path / "ragtruth", [QA_SOURCE], [_response("1")])
+        first_load = loader.load()
+        for name in ("response.jsonl", "source_info.jsonl"):
+            (tmp_path / "ragtruth" / name).unlink()
+
+        assert loader.load()[0].model == first_load[0].model == "gpt-4-0613"
+
+    def test_cache_written_before_the_model_field_still_loads(self, tmp_path: Path) -> None:
+        processed_dir = tmp_path / "processed"
+        processed_dir.mkdir(parents=True)
+        old_line = {
+            "context": "p",
+            "response": "r",
+            "is_hallucination": False,
+            "source_dataset": "ragtruth_qa",
+            "group_id": "1",
+            "official_split": "train",
+        }
+        (processed_dir / "ragtruth_qa.jsonl").write_text(
+            json.dumps(old_line) + "\n", encoding="utf-8"
+        )
+        loader = RagTruthLoader(raw_path=tmp_path / "unused", processed_dir=processed_dir)
+
+        assert loader.load()[0].model == ""
 
 class TestGetDatasetLoader:
     def test_returns_halueval_loader(self, tmp_path: Path) -> None:
