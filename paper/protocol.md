@@ -169,3 +169,29 @@ frontier rule:
 - The frontier table, computed with the rule above on the pooled AUC and
   p50 latency. `length` is listed as "reference" and takes no part in the
   rule.
+
+
+### 19-10-2026
+
+Seen before this amendment: the pooled and within-model results of lexical,
+distilbert_transfer, distilbert_indomain and length on the RAGTruth test.
+Not seen yet: any nli_chunked result.
+
+Additions. They do not change any arm, threshold, primary metric or the
+frontier rule:
+
+- "Beats length" is defined on the within-model AUC: a detector beats the
+  `length` baseline if the paired 95% bootstrap interval of
+  (within-model AUC of the detector - within-model AUC of length) lies
+  entirely above 0. The interval resamples sources (1000 resamples, seed 42),
+  uses the same resamples for both scores and the same pair weights. It is
+  reported as `beats_length_within_model` in metrics_summary.csv. The
+  baseline itself is reported as False.
+- Implementation details of nli_chunked that the protocol left open, fixed
+  before running it: token counts exclude special tokens; windows do not
+  overlap and keep the "passage N:" markers; a sentence longer than the window
+  is cut on whitespace; each (window, sentence) pair is truncated by the same
+  rule as the DistilBERT arms (window first, `longest_first` only if the
+  sentence alone exceeds the limit); P(entailment) is the softmax over the
+  three logits, with the entailment index read from the model config; the
+  forward pass runs in fp32 without autocast.

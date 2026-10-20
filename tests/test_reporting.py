@@ -58,6 +58,55 @@ class TestUncertaintyColumns:
 
         assert all(value is None for value in columns.values())
 
+    def test_a_detector_that_recognises_the_model_does_not_beat_length_within_models(self) -> None:
+        # Models differ in hallucination rate and the scores only encode the
+        # model, so pooled they look informative and within models they carry
+        # nothing; the length baseline is noise.
+        generator = np.random.default_rng(5)
+        n = 800
+        models = [f"m{i % 2}" for i in range(n)]
+        labels = [int(generator.random() < (0.6 if m == "m0" else 0.1)) for m in models]
+        scores = [(1.0 if m == "m0" else 0.0) + generator.normal(0, 0.01) for m in models]
+        length = generator.normal(0, 1.0, size=n).tolist()
+        sources = [f"s{i // 2}" for i in range(n)]
+
+        columns = uncertainty_columns(labels, scores, sources, models, length, 120, 42)
+
+        assert columns["auc_minus_length_lower"] > 0.0
+        assert columns["beats_length_within_model"] is False
+
+    def test_a_detector_with_real_signal_beats_length_within_models(self) -> None:
+        labels, scores, length, sources, models = _data(n=800, seed=3)
+
+        columns = uncertainty_columns(labels, scores, sources, models, length, 120, 42)
+
+        assert columns["within_model_minus_length"] > 0.0
+        assert columns["within_model_minus_length_lower"] > 0.0
+        assert columns["beats_length_within_model"] is True
+
+    def test_beats_length_is_true_exactly_when_the_lower_bound_is_above_zero(self) -> None:
+        labels, scores, length, sources, models = _data()
+
+        columns = uncertainty_columns(labels, scores, sources, models, length, 60, 42)
+
+        assert columns["beats_length_within_model"] == (columns["within_model_minus_length_lower"] > 0.0)
+
+    def test_the_within_model_difference_stays_empty_without_models(self) -> None:
+        labels, scores, length, sources, _ = _data()
+
+        columns = uncertainty_columns(labels, scores, sources, [""] * len(labels), length, 60, 42)
+
+        assert columns["within_model_minus_length"] is None
+        assert columns["beats_length_within_model"] is None
+
+    def test_the_length_baseline_does_not_beat_itself(self) -> None:
+        labels, _, length, sources, models = _data()
+
+        columns = uncertainty_columns(labels, length, sources, models, length, 40, 42)
+
+        assert columns["within_model_minus_length"] == 0.0
+        assert columns["beats_length_within_model"] is False
+
     def test_the_difference_with_length_is_zero_for_the_length_scores_themselves(self) -> None:
         labels, _, length, sources, models = _data()
 

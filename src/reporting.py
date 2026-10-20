@@ -22,6 +22,7 @@ from src.statistics import (
     bootstrap_auc_difference,
     bootstrap_auc_interval,
     bootstrap_stratified_auc,
+    bootstrap_stratified_auc_difference,
     dominators,
 )
 
@@ -36,6 +37,10 @@ UNCERTAINTY_COLUMNS = (
     "within_model_auc",
     "within_model_auc_lower",
     "within_model_auc_upper",
+    "within_model_minus_length",
+    "within_model_minus_length_lower",
+    "within_model_minus_length_upper",
+    "beats_length_within_model",
 )
 
 
@@ -47,14 +52,18 @@ def uncertainty_columns(
     length_scores: list[float],
     n_resamples: int,
     random_seed: int,
-) -> dict[str, float | None]:
+) -> dict[str, float | bool | None]:
     """Bootstrap-based columns for one (dataset, detector) pair.
 
     All intervals resample whole source groups. The within-model columns
     are filled only when the samples record a generating model; any column
-    that cannot be computed (for example a single class) stays ``None``.
+
+    ``beats_length_within_model`` is True when the paired interval of the
+    within-model difference with the length baseline lies entirely above 0
+    (protocol, amendment 3). It is False, not None, when the interval is
+    computed and reaches 0, and it is also False for the baseline itself.
     """
-    columns: dict[str, float | None] = {name: None for name in UNCERTAINTY_COLUMNS}
+    columns: dict[str, float | bool | None] = {name: None for name in UNCERTAINTY_COLUMNS}
 
     try:
         pooled = bootstrap_auc_interval(
@@ -76,6 +85,15 @@ def uncertainty_columns(
             columns["within_model_auc"] = within.auc
             columns["within_model_auc_lower"] = within.lower
             columns["within_model_auc_upper"] = within.upper
+
+            within_versus_length = bootstrap_stratified_auc_difference(
+                labels, scores, length_scores, models, source_groups, n_resamples,
+                random_seed=random_seed,
+            )
+            columns["within_model_minus_length"] = within_versus_length.difference
+            columns["within_model_minus_length_lower"] = within_versus_length.lower
+            columns["within_model_minus_length_upper"] = within_versus_length.upper
+            columns["beats_length_within_model"] = within_versus_length.lower > 0.0
     except BootstrapError:
         pass
 

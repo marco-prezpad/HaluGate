@@ -71,6 +71,7 @@ def test_available_strategies_lists_all_registered() -> None:
         "distilbert_transfer",
         "distilbert_indomain",
         "nli",
+        "nli_chunked",
         "length",
     }
 

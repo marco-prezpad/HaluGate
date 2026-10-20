@@ -23,6 +23,7 @@ from src.statistics import (
     bootstrap_auc_difference,
     bootstrap_auc_interval,
     bootstrap_stratified_auc,
+    bootstrap_stratified_auc_difference,
     dominates,
     dominators,
     pareto_frontier,
@@ -296,3 +297,96 @@ class TestDominators:
 
     def test_a_single_detector_is_dominated_by_nobody(self) -> None:
         assert dominators([_result("only", 1.0, 0.5, 0.6)]) == {"only": []}
+
+def _two_detectors_in_two_models(seed: int = 9) -> tuple[list[int], list[float], list[float], list[str], list[str]]:
+    """Two models with very different hallucination rates. ``recogniser`` only
+    knows which model wrote the response; ``informed`` also sees the label.
+    """
+    generator = np.random.default_rng(seed)
+    labels, informed, recogniser, strata, groups = [], [], [], [], []
+    for index in range(600):
+        model = "hard" if index % 2 == 0 else "easy"
+        rate = 0.6 if model == "hard" else 0.1
+        label = int(generator.random() < rate)
+        labels.append(label)
+        informed.append(label * 1.0 + generator.normal(0, 0.6))
+        recogniser.append((1.0 if model == "hard" else 0.0) + generator.normal(0, 0.01))
+        strata.append(model)
+        groups.append(f"s{index // 6}")
+    return labels, informed, recogniser, strata, groups
+
+
+class TestBootstrapStratifiedAucDifference:
+    def test_estimate_is_the_difference_of_the_stratified_aucs(self) -> None:
+        labels, informed, recogniser, strata, groups = _two_detectors_in_two_models()
+
+        result = bootstrap_stratified_auc_difference(
+            labels, informed, recogniser, strata, groups, n_resamples=60
+        )
+
+        assert result.difference == pytest.approx(
+            stratified_auc(labels, informed, strata) - stratified_auc(labels, recogniser, strata)
+        )
+
+    def test_a_detector_that_only_recognises_the_model_gets_no_credit_inside_models(self) -> None:
+        labels, informed, recogniser, strata, groups = _two_detectors_in_two_models()
+
+        result = bootstrap_stratified_auc_difference(
+            labels, informed, recogniser, strata, groups, n_resamples=200
+        )
+
+        assert result.difference > 0.2 and result.lower > 0.0
+
+    def test_identical_scores_give_a_zero_difference(self) -> None:
+        labels, informed, _, strata, groups = _two_detectors_in_two_models()
+
+        result = bootstrap_stratified_auc_difference(
+            labels, informed, informed, strata, groups, n_resamples=50
+        )
+
+        assert (result.difference, result.lower, result.upper) == (0.0, 0.0, 0.0)
+
+    def test_swapping_the_detectors_flips_the_sign(self) -> None:
+        labels, informed, recogniser, strata, groups = _two_detectors_in_two_models()
+
+        forward = bootstrap_stratified_auc_difference(
+            labels, informed, recogniser, strata, groups, n_resamples=80
+        )
+        backward = bootstrap_stratified_auc_difference(
+            labels, recogniser, informed, strata, groups, n_resamples=80
+        )
+
+        assert backward.difference == pytest.approx(-forward.difference)
+        assert backward.upper == pytest.approx(-forward.lower)
+
+    def test_same_seed_gives_the_same_interval(self) -> None:
+        labels, informed, recogniser, strata, groups = _two_detectors_in_two_models()
+
+        first = bootstrap_stratified_auc_difference(
+            labels, informed, recogniser, strata, groups, n_resamples=50, random_seed=4
+        )
+        second = bootstrap_stratified_auc_difference(
+            labels, informed, recogniser, strata, groups, n_resamples=50, random_seed=4
+        )
+
+        assert first == second
+
+    def test_raises_when_no_stratum_has_both_classes(self) -> None:
+        with pytest.raises(BootstrapError, match="stratum"):
+            bootstrap_stratified_auc_difference(
+                [0, 0, 1], [0.1, 0.2, 0.3], [0.3, 0.2, 0.1], ["a", "a", "b"], n_resamples=10
+            )
+
+    @pytest.mark.parametrize(
+        "labels, scores_a, scores_b, strata, groups",
+        [
+            ([0, 1], [0.1, 0.9], [0.2, 0.8], ["a"], None),
+            ([0, 1], [0.1, 0.9], [0.2], ["a", "a"], None),
+            ([0, 1], [0.1, 0.9], [0.2, 0.8], ["a", "a"], ["g"]),
+            ([1, 1], [0.1, 0.9], [0.2, 0.8], ["a", "a"], None),
+            ([], [], [], [], None),
+        ],
+    )
+    def test_rejects_invalid_inputs(self, labels, scores_a, scores_b, strata, groups) -> None:
+        with pytest.raises(BootstrapError):
+            bootstrap_stratified_auc_difference(labels, scores_a, scores_b, strata, groups)

@@ -6,7 +6,8 @@ Statistics required by paper/protocol.md:
 - grouped bootstrap intervals (resampling whole groups, e.g. all responses
   that share one source document, so correlated samples are not treated as
   independent) for the AUC-ROC, for the AUC difference between two
-  detectors scored on the same samples, and for the within-stratum AUC;
+  detectors scored on the same samples, and for the within-stratum AUC
+  between two detectors;
 - the within-stratum ("stratified") AUC itself: the probability that a
   hallucinated response outscores a correct one *written by the same
   model*, which removes the advantage of merely recognising the model;
@@ -250,6 +251,56 @@ def bootstrap_stratified_auc(
     )
     lower, upper = _percentile_interval(values, confidence)
     return AucInterval(float(estimate), lower, upper)
+
+
+def bootstrap_stratified_auc_difference(
+    labels: list[int],
+    scores_a: list[float],
+    scores_b: list[float],
+    strata: list[str],
+    groups: list[str] | None = None,
+    n_resamples: int = 1000,
+    confidence: float = 0.95,
+    random_seed: int = 42,
+) -> DifferenceInterval:
+    """Paired bootstrap CI for the within-stratum AUC(a) - AUC(b).
+
+    Both detectors are evaluated on the very same resamples, and inside
+    each resample both use the same pair weights (the weights depend only
+    on the labels and strata), so the difference is not a by-product of
+    comparing different sets of pairs.
+
+    Raises:
+        BootstrapError: under the same conditions as ``bootstrap_auc_interval``,
+            or when no stratum has both classes.
+    """
+    sizes = [len(labels), len(scores_a), len(scores_b), len(strata)]
+    sizes += [len(groups)] if groups is not None else []
+    _validate(sizes, labels, n_resamples, confidence)
+
+    estimate_a = stratified_auc(labels, scores_a, strata)
+    estimate_b = stratified_auc(labels, scores_b, strata)
+    if estimate_a is None or estimate_b is None:
+        raise BootstrapError("no stratum contains both classes")
+
+    label_array = np.asarray(labels)
+    array_a = np.asarray(scores_a, dtype=float)
+    array_b = np.asarray(scores_b, dtype=float)
+    strata_array = np.asarray(strata)
+    group_ids = groups if groups is not None else [str(i) for i in range(len(labels))]
+
+    def _difference(idx: np.ndarray) -> float | None:
+        auc_a = stratified_auc(
+            label_array[idx].tolist(), array_a[idx].tolist(), strata_array[idx].tolist()
+        )
+        auc_b = stratified_auc(
+            label_array[idx].tolist(), array_b[idx].tolist(), strata_array[idx].tolist()
+        )
+        return None if auc_a is None or auc_b is None else auc_a - auc_b
+
+    values = _grouped_bootstrap(group_ids, n_resamples, random_seed, _difference)
+    lower, upper = _percentile_interval(values, confidence)
+    return DifferenceInterval(float(estimate_a - estimate_b), lower, upper)
 
 
 @dataclass(frozen=True)

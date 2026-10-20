@@ -52,6 +52,7 @@ strategies_by_dataset:
     - lexical
     - distilbert_transfer
     - distilbert_indomain
+    - nli_chunked
     - length
 
 strategy_params: 
@@ -73,4 +74,9 @@ strategy_params:
   nli:
       model_name: cross-encoder/nli-deberta-v3-base
       batch_size: 8
+      max_sequence_length: 512
+  nli_chunked:
+      model_name: cross-encoder/nli-deberta-v3-base
+      batch_size: 8
+      max_window_tokens: 350
       max_sequence_length: 512

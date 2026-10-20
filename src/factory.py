@@ -23,6 +23,7 @@ from src.errors import UnknownStrategyError
 from src.strategies.base import HallucinationDetector
 from src.strategies.distilbert_classifier import DistilBERTDetector
 from src.strategies.lexical_overlap import LexicalOverlapDetector
+from src.strategies.nli_chunked import NLIChunkedDetector
 from src.strategies.nli_detector import NLIDetector
 from src.strategies.response_length import ResponseLengthDetector
 
@@ -45,6 +46,7 @@ _STRATEGY_REGISTRY: dict[str, Callable[[dict[str, Any]], HallucinationDetector]]
     "distilbert_transfer": _distilbert_builder(HALUEVAL_DISTILBERT_PATH),
     "distilbert_indomain": _distilbert_builder(RAGTRUTH_DISTILBERT_PATH),
     "nli": lambda params: NLIDetector(**params),
+    "nli_chunked": lambda params: NLIChunkedDetector(**params),
     "length": lambda params: ResponseLengthDetector(**params),
 }
 
