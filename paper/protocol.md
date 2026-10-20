@@ -195,3 +195,18 @@ frontier rule:
   sentence alone exceeds the limit); P(entailment) is the softmax over the
   three logits, with the entailment index read from the model config; the
   forward pass runs in fp32 without autocast.
+
+
+### 20-10-2026
+
+Seen before this amendment: the frontier table computed with a single
+latency measurement per detector. Not seen yet: any repeated latency
+measurement.
+
+Addition. It changes how the latency of the frontier rule is computed, not
+the rule itself: the p50 latency of a detector is the median, over at least
+5 repetitions, of the p50 of each repetition (scripts/latency_repeats.py).
+Repetitions time the detectors interleaved in random order after a discarded
+burn-in pass, on the same first 200 test responses; the range of the
+repetitions is reported next to the median. GPU, driver and library versions
+are stored with the measurements.
