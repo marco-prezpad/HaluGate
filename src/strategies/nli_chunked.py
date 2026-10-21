@@ -51,6 +51,7 @@ class NLIChunkedDetector(NLIDetector):
         contradiction_threshold: score above which a response is flagged.
             Unused by evaluate.py, which calibrates its own threshold.
         device: torch device string; auto-detected when left as ``None``.
+        revision: commit of the Hub repository to load; ``None`` loads ``main``.
     """
 
     name = "nli_chunked"
@@ -63,6 +64,7 @@ class NLIChunkedDetector(NLIDetector):
         max_sequence_length: int = DEFAULT_MAX_SEQUENCE_LENGTH,
         contradiction_threshold: float = DEFAULT_CONTRADICTION_THRESHOLD,
         device: str | None = None,
+        revision: str | None = None,
     ) -> None:
         super().__init__(
             model_name=model_name,
@@ -70,6 +72,7 @@ class NLIChunkedDetector(NLIDetector):
             max_sequence_length=max_sequence_length,
             contradiction_threshold=contradiction_threshold,
             device=device,
+            revision=revision,
         )
         self.max_window_tokens = max_window_tokens
 

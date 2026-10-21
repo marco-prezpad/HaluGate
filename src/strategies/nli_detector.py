@@ -40,6 +40,8 @@ class NLIDetector(HallucinationDetector):
             probability above which a response is flagged as unsupported.
             Unused by evaluate.py, which calibrates its own threshold.
         device: torch device string; auto-detected when left as ``None``.
+        revision: commit of the Hub repository to load (tokenizer and model);
+            ``None`` loads whatever ``main`` points to at that moment.
     """
 
     name = "nli"
@@ -51,8 +53,10 @@ class NLIDetector(HallucinationDetector):
         max_sequence_length: int = DEFAULT_MAX_SEQUENCE_LENGTH,
         contradiction_threshold: float = DEFAULT_CONTRADICTION_THRESHOLD,
         device: str | None = None,
+        revision: str | None = None,
     ) -> None:
         self.model_name = model_name
+        self.revision = revision
         self.batch_size = batch_size
         self.max_sequence_length = max_sequence_length
         self.contradiction_threshold = contradiction_threshold
@@ -70,8 +74,12 @@ class NLIDetector(HallucinationDetector):
             from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
             device_name = self._device_name or ("cuda" if torch.cuda.is_available() else "cpu")
-            self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            self._model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name, revision=self.revision
+            )
+            self._model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_name, revision=self.revision
+            )
             self._model.to(device_name)
             self._model.eval()
             self._device_name = device_name

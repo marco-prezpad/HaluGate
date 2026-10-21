@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04@sha256:a5dc56795348ea8fe46305612afaf7f9882cb438b08a582d4e5bd762369d7922
 
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
@@ -18,19 +18,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /workspace
 
-COPY pyproject.toml .
+COPY pyproject.toml requirements-lock.txt ./
 
 RUN touch README.md
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu128
-
-RUN pip install --no-cache-dir numpy scipy pandas pyarrow scikit-learn \
-    transformers "accelerate>=1.1.0" datasets evaluate pyyaml tqdm matplotlib seaborn \
-    pytest pytest-cov jupyter black ruff
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cu128 \
+    -r requirements-lock.txt
 
 COPY . .
 
-RUN pip install -e .[all]
+RUN pip install --no-cache-dir --no-deps -e .
 
 CMD ["bash"]

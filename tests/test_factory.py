@@ -80,3 +80,7 @@ def test_get_detector_returns_the_response_length_baseline() -> None:
     from src.strategies.response_length import ResponseLengthDetector
 
     assert isinstance(get_detector("length"), ResponseLengthDetector)
+
+@pytest.mark.parametrize("name", ["nli", "nli_chunked"])
+def test_the_nli_detectors_accept_a_pinned_revision(name: str) -> None:
+    assert get_detector(name, {"revision": "abc123"}).revision == "abc123"

@@ -1,0 +1,12 @@
+.git
+.devcontainer
+data
+results
+models
+notebooks
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+*.egg-info

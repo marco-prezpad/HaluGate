@@ -135,6 +135,7 @@ def main() -> None:
         logging_steps=50,
         fp16=torch.cuda.is_available(),
         report_to=[],
+        seed=random_seed,
     )
 
     trainer = Trainer(

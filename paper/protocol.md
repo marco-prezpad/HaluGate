@@ -210,3 +210,20 @@ Repetitions time the detectors interleaved in random order after a discarded
 burn-in pass, on the same first 200 test responses; the range of the
 repetitions is reported next to the median. GPU, driver and library versions
 are stored with the measurements.
+
+
+### 21-10-2026
+
+Reproducibility. No arm, threshold, metric or rule changes.
+
+- `nli` and `nli_chunked` get an optional `revision` parameter, set to
+  commit 6c749ce3425cd33b46d187e45b92bbf96ee12ec7 of
+  cross-encoder/nli-deberta-v3-base. It is the only revision present in the
+  cache that produced every result so far (`main` pointed to it), so the
+  weights are the same ones; the model, window size, aggregation and
+  thresholds are untouched.
+- Package versions are pinned in requirements-lock.txt and the base image by
+  digest.
+- results/manifest.json records, for the final runs, the commit, the
+  SHA-256 of the config, protocol, raw data and trained weights, and the Hub
+  revisions.

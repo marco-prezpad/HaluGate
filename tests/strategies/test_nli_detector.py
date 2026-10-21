@@ -153,3 +153,34 @@ def test_score_is_one_minus_entailment_probability(
 def test_score_lies_within_unit_interval(detector_with_fake_model: NLIDetector) -> None:
     score_value = detector_with_fake_model.score("ctx", "resp")
     assert 0.0 <= score_value <= 1.0
+
+@pytest.mark.parametrize("revision", [None, "abc123"])
+def test_revision_is_passed_to_tokenizer_and_model(
+    monkeypatch: pytest.MonkeyPatch, revision: str | None
+) -> None:
+    import transformers
+
+    calls: list[tuple[str, tuple[Any, ...], dict[str, Any]]] = []
+
+    def _recording(kind: str, instance: Any) -> Any:
+        def from_pretrained(*args: Any, **kwargs: Any) -> Any:
+            calls.append((kind, args, kwargs))
+            return instance
+
+        return staticmethod(from_pretrained)
+
+    monkeypatch.setattr(
+        transformers.AutoTokenizer, "from_pretrained", _recording("tokenizer", _FakeTokenizer())
+    )
+    monkeypatch.setattr(
+        transformers.AutoModelForSequenceClassification,
+        "from_pretrained",
+        _recording("model", _FakeModel()),
+    )
+
+    NLIDetector(model_name="org/model", device="cpu", revision=revision)._ensure_loaded()
+
+    assert calls == [
+        ("tokenizer", ("org/model",), {"revision": revision}),
+        ("model", ("org/model",), {"revision": revision}),
+    ]
