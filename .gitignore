@@ -70,20 +70,22 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
-# Custom: data, results, model checkpoints (uploaded last, once everything works)
+# Custom: data and model checkpoints stay out of git (see README, "Data" and "Models")
 data/
 !src/data
-results/*/scores_partial.json
-results/*/metrics_partial.csv
-results/logs/checkpoints/
-results/latency/
 models/
 *.pth
 *.pt
 *.h5
 *.keras
 *.onnx
-results/ 
+
+# Results: everything under results/ is small (< 2 MB in total) and is tracked,
+# except what is only a by-product of a run
+results/**/scores_partial.json
+results/**/metrics_partial.csv
+results/logs/
+results/figures/latency_accuracy_frontier.png
 
 # Logs
 *.log

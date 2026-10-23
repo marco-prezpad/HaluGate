@@ -104,13 +104,12 @@ class TestFrontierFigure:
         panel_b = figure.axes[1]
         dashed = [ln for ln in panel_b.lines if ln.get_linestyle() == "--"]
         assert [ln.get_ydata()[0] for ln in dashed] == [pytest.approx(0.71)]
-        assert any(t.get_text() == "length (reference)" for t in panel_b.texts)
 
     def test_has_a_legend_for_fill_and_reference(self) -> None:
         legend = _frontier_figure().legends[0]
 
         assert [t.get_text() for t in legend.get_texts()] == [
-            "on the frontier", "dominated", "length baseline, 95% CI band"
+            "on the frontier", "dominated", "length baseline (dashed) and its 95% CI (band)"
         ]
 
 

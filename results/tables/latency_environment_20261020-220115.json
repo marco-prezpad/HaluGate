@@ -1,0 +1,31 @@
+{
+  "timestamp_utc": "2026-10-20T22:01:15+00:00",
+  "python": "3.10.12",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+  "cpu_count": 16,
+  "packages": {
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.7.2",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.18.0"
+  },
+  "torch_cuda": "12.8",
+  "cuda_available": true,
+  "torch_gpu_name": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "nvidia_smi": {
+    "name": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "driver_version": "592.27",
+    "max_sm_clock_mhz": "3090",
+    "power_limit_w": "[N/A]"
+  },
+  "git_commit": "01a7d822b31dccf0222d3e87e988b1e717816c31",
+  "git_dirty": true,
+  "run_id": "20261020-220115",
+  "arguments": {
+    "repetitions": 5,
+    "burn_in": 1,
+    "sample": "first",
+    "sample_size": 200
+  }
+}

@@ -59,6 +59,7 @@ MARKERS = {
 }
 # Drawn hollow in the per-model plot, where fill does not carry frontier status.
 HOLLOW = ("distilbert_transfer",)
+LABEL_BELOW = ("distilbert_transfer",)
 MARKER_SIZE = 6.5
 LINE_WIDTH = 1.2
 
@@ -110,7 +111,7 @@ def plot_frontier(
     titles = [
         f"(a) {datasets[0]}, pooled AUC",
         f"(b) {datasets[-1]}, pooled AUC",
-        f"(c) {datasets[-1]}, within-model AUC (fill as in b)",
+        f"(c) {datasets[-1]}, within-model AUC",
     ]
     repeated = repeated_latency(latency_summary)
     status = {(row["dataset"], row["strategy"]): row["status"] for row in frontier}
@@ -129,10 +130,6 @@ def plot_frontier(
             if row.strategy == reference:
                 axis.axhspan(lower, upper, color=MUTED, alpha=0.12, linewidth=0)
                 axis.axhline(value, color=MUTED, linewidth=1, linestyle="--")
-                first = axis is axes[0]
-                axis.text(0.99 if first else 0.5, value, "length (reference)",
-                          transform=axis.get_yaxis_transform(), ha="right" if first else "center",
-                          va="top" if first else "bottom", color=MUTED, fontsize=7.5)
                 continue
             latency = repeated[(dataset, row.strategy)]
             latencies.append(latency["p50"])
@@ -142,13 +139,16 @@ def plot_frontier(
                 xerr=[[latency["p50"] - latency["p50_min"]], [latency["p50_max"] - latency["p50"]]],
                 yerr=[[value - lower], [upper - value]],
             )
-            axis.annotate(display_name(row.strategy), (latency["p50"], value),
-                          textcoords="offset points", xytext=(7, 6), fontsize=8, color=INK)
+            below = row.strategy in LABEL_BELOW
+            axis.annotate(display_name(row.strategy), (latency["p50"], lower if below else upper),
+                          textcoords="offset points", xytext=(-4, -4 if below else 4),
+                          ha="left", va="top" if below else "bottom", fontsize=8, color=INK)
 
         axis.set_xscale("log")
         axis.set_xlim(min(latencies) / 4, max(latencies) * 8)
         axis.xaxis.set_major_formatter(FuncFormatter(lambda tick, _: f"{tick:g}"))
         axis.xaxis.set_minor_formatter(NullFormatter())
+        axis.margins(y=0.12)
         axis.set_title(title, loc="left", color=INK)
         axis.set_xlabel("p50 latency per response (ms, median of repetitions)")
         axis.set_ylabel("AUC (test)")
@@ -158,7 +158,7 @@ def plot_frontier(
                markersize=MARKER_SIZE, label="on the frontier"),
         Line2D([], [], marker="o", linestyle="", color=MUTED, markerfacecolor=SURFACE,
                markeredgewidth=1.4, markersize=MARKER_SIZE, label="dominated"),
-        Line2D([], [], color=MUTED, linestyle="--", label="length baseline, 95% CI band"),
+        Line2D([], [], color=MUTED, linestyle="--", label="length baseline (dashed) and its 95% CI (band)"),
     ]
     figure.legend(handles=handles, loc="lower center", ncol=3, frameon=False, fontsize=8)
     figure.tight_layout(rect=(0, 0.07, 1, 1))
